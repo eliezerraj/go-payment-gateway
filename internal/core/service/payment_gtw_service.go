@@ -153,7 +153,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	// Create a StepProcess
 	list_stepProcess := []model.StepProcess{}
 
-	stepProcess01 := model.StepProcess{Name: "AUTHORIZATION:PENDING",
+	stepProcess01 := model.StepProcess{Name: "AUTHORIZATION:STATUS:PENDING",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess01)
 	payment.StepProcess = &list_stepProcess
@@ -212,6 +212,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 04 (LEDGER) <===")
 	// Access Account (ledger)
 	moviment := model.Moviment{	AccountID: card_parsed.AccountID,
+								AccountFrom: model.Account{AccountID: card_parsed.AccountID},
 								Type: "WITHDRAW",
 								Currency: payment.Currency,
 								Amount: payment.Amount }
@@ -288,7 +289,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 		return nil, err
 	}
 
-	stepProcess06 := model.StepProcess{Name: "AUTHORIZATION:OK",
+	stepProcess06 := model.StepProcess{Name: "AUTHORIZATION:STATUS:OK",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess06)
 
@@ -313,11 +314,20 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		return nil, err
 	}
 
-	// Handle the transaction
+	// handle connection
 	defer func() {
 		if err != nil {
+			childLogger.Info().Interface("trace-resquest-id", trace_id ).Msg("ROLLBACK !!!!")
+			err :=  s.workerEvent.WorkerKafka.AbortTransaction(ctx)
+			if err != nil {
+				childLogger.Error().Interface("trace-resquest-id", trace_id ).Err(err).Msg("failed to kafka AbortTransaction")
+			}
 			tx.Rollback(ctx)
 		} else {
+			err =  s.workerEvent.WorkerKafka.CommitTransaction(ctx)
+			if err != nil {
+				childLogger.Error().Interface("trace-resquest-id", trace_id ).Err(err).Msg("Failed to Kafka CommitTransaction")
+			}
 			tx.Commit(ctx)
 		}
 		s.workerRepository.DatabasePGServer.ReleaseTx(conn)
@@ -405,11 +415,11 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.ID = res_pixTransaction.ID
 	pixTransaction.CreatedAt = res_pixTransaction.CreatedAt
 
-	stepProcess03 := model.StepProcess{	Name: "PIX-TRANSACTION:PENDING",
+	stepProcess03 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:PENDING",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess03)
 	// ------------------------  STEP-4 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 01 (SEND TO QUEUE) <===")
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 01 (SEND TO LEDGE VIA MESSAGE) <===")
 
 	err = s.workerEvent.WorkerKafka.BeginTransaction()
 	if err != nil {
@@ -428,7 +438,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		return nil, err
 	}
 
-	stepProcess04 := model.StepProcess{	Name: "SEND-QUEUE:OK",
+	stepProcess04 := model.StepProcess{	Name: "LEDGER:WIRE-TRANSFER:IN-QUEUE",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess04)
 	// ------------------------  STEP-4 ----------------------------------//
@@ -448,7 +458,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		return nil, err
 	}
 
-	stepProcess05 := model.StepProcess{	Name: "PIX-TRANSACTION:IN-QUEUE",
+	stepProcess05 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:IN-QUEUE",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess05)
 

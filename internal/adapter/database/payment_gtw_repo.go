@@ -218,7 +218,7 @@ func (w *WorkerRepository) AddPixTransaction(ctx context.Context, tx pgx.Tx, pix
 	return &pixTransaction , nil
 }
 
-// About update payment
+// About update pix_transaction
 func (w *WorkerRepository) UpdatePixTransaction(ctx context.Context, tx pgx.Tx, pixTransaction model.PixTransaction) (int64, error){
 	childLogger.Info().Str("func","UpdatePixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 

@@ -121,6 +121,8 @@ type TransactionLimit struct {
 // go-ledger
 type Moviment struct {
 	AccountID		string  	`json:"account_id,omitempty"`
+	AccountFrom		Account  	`json:"account_from,omitempty"`
+	AccountTo		*Account  	`json:"account_to,omitempty"`
 	Type			string  	`json:"type,omitempty"`
 	Currency		string  	`json:"currency,omitempty"`
 	Amount			float64		`json:"amount,omitempty"`
@@ -132,10 +134,6 @@ type Account struct {
 	ID				int			`json:"id,omitempty"`
 	AccountID		string		`json:"account_id,omitempty"`
 	PersonID		string  	`json:"person_id,omitempty"`
-	CreatedAt		time.Time 	`json:"created_at,omitempty"`
-	UpdatedAt		*time.Time 	`json:"updated_at,omitempty"`
-	UserLastUpdate	*string  	`json:"user_last_update,omitempty"`
-	TenantId		string  	`json:"tenant_id,omitempty"`
 }
 
 type PixTransaction struct {
