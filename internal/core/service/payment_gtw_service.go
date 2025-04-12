@@ -275,6 +275,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess05)
 	
+	// ------------------------  STEP-6 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - (UPDATE PAYMENT) <===")
 	
 	// update status payment
