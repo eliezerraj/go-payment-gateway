@@ -13,7 +13,7 @@ Parameters:
     Type: String
   ServiceAccountName:
     Type: String
-    Default: sa-go-ledger
+    Default: sa-go-payment-gateway
   K8Namespace:
     Type: String
     Description: Namespace
@@ -21,22 +21,22 @@ Parameters:
 Mappings:
   Tag:
     service:
-      value: go-ledger
+      value: go-payment-gateway
     owner:
       value: architecture
     platform:
       value: poc
     application:
-      value: go-ledger
+      value: go-payment-gateway
     component:
-      value: go-ledger
+      value: go-payment-gateway
     PCIClassification:
       value: non-pci
 Resources:
   OIDCRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: OIDCRoleGoLedger
+      RoleName: OIDCRoleGoPaymentGateway
       AssumeRolePolicyDocument:
         Fn::Sub:
         - "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"\
@@ -59,7 +59,7 @@ Resources:
               - //
               - Ref: providerURL
       Policies:
-      - PolicyName: OIDCRoleGoLedgerPolicy
+      - PolicyName: OIDCRoleGoPaymentGatewayPolicy
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
