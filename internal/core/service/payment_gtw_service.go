@@ -108,7 +108,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	headers := map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",
 		"X-Request-Id": trace_id,
-		"x-apigw-api-id": s.apiService[1].XApigwApiId,
+		"x-apigw-api-id": s.apiService[3].XApigwApiId,
 		"Host": s.apiService[3].HostName,
 	}
 	// prepare http client
@@ -247,19 +247,18 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 
 	// ------------------------  STEP-5 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 05 (CARDS:ATC) <===")
-	// Set headers
-	
+
 	// prepare headers
 	headers = map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",
 		"X-Request-Id": trace_id,
-		"x-apigw-api-id": s.apiService[1].XApigwApiId,
-		"Host": s.apiService[3].HostName,
+		"x-apigw-api-id": s.apiService[4].XApigwApiId,
+		"Host": s.apiService[4].HostName,
 	}
 	// prepare http client
 	httpClient = go_core_api.HttpClient {
-		Url: fmt.Sprintf("%s/%s/%s",s.apiService[3].Url,"card",payment.CardNumber),
-		Method: s.apiService[3].Method,
+		Url: fmt.Sprintf("%s/%s",s.apiService[4].Url,"atc"),
+		Method: s.apiService[4].Method,
 		Timeout: 15,
 		Headers: &headers,
 	}
@@ -267,7 +266,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	// get card data
 	res_payload, statusCode, err = apiService.CallRestApi(	ctx,
 															httpClient, 
-															nil)
+															card_parsed)
 	if err != nil {
 		return nil, errorStatusCode(statusCode, s.apiService[3].Name)
 	}
