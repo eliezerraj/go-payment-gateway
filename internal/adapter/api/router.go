@@ -38,14 +38,14 @@ func NewHttpRouters(workerService *service.WorkerService) HttpRouters {
 
 // About return a health
 func (h *HttpRouters) Health(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Msg("Health")
+	childLogger.Info().Str("func","Health").Send()
 
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
 // About return a live
 func (h *HttpRouters) Live(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Live").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	childLogger.Info().Str("func","Live").Send()
 
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
