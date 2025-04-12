@@ -4,7 +4,7 @@ Description: Template ECR Repo v2.0 - 26/03/2025
 Parameters:
   RepositoryName: 
     Type: String
-    Default: go-ledger
+    Default: go-payment-gateway
   Env:
     Type: String
     Default: dev
@@ -20,7 +20,7 @@ Parameters:
     Default: dockone
   ApplicationName:
     Type: String
-    Default: go-ledger
+    Default: go-payment-gateway
   ComponentName:
     Type: String
     Default: ecr
