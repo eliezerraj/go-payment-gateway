@@ -1,5 +1,5 @@
-#docker build -t go-ledger .
-#docker run -dit --name go-ledger -p 6003:6003 go-ledger sleep infinity
+#docker build -t go-payment-gateway .
+#docker run -dit --name go-payment-gateway -p 6004:6004 go-payment-gateway sleep infinity
 
 FROM golang:1.23.3 As builder
 
@@ -10,12 +10,12 @@ COPY . .
 RUN go mod tidy
 
 WORKDIR /app/cmd
-RUN go build -o go-ledger -ldflags '-linkmode external -w -extldflags "-static"'
+RUN go build -o go-payment-gateway -ldflags '-linkmode external -w -extldflags "-static"'
 
 FROM alpine
 
 WORKDIR /app
-COPY --from=builder /app/cmd/go-ledger .
+COPY --from=builder /app/cmd/go-payment-gateway .
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-CMD ["/app/go-ledger"]
+CMD ["/app/go-payment-gateway"]

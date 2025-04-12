@@ -1,7 +1,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: &app-name go-ledger-hpa
+  name: &app-name go-payment-gateway-hpa
   namespace: test-a
   labels:
     app: *app-name
@@ -9,7 +9,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: go-ledger
+    name: go-payment-gateway
   minReplicas: 1
   maxReplicas: 4
   metrics:
