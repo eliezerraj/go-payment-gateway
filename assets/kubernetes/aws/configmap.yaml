@@ -6,7 +6,7 @@ metadata:
   labels:
     app: *app-name
 data:
-  API_VERSION: "3.0"
+  API_VERSION: "3.1"
   POD_NAME: "go-payment-gateway.k8"
   PORT: "6004"
   DB_HOST: "rds-proxy-db-arch.proxy-couoacqalfwt.us-east-2.rds.amazonaws.com"
