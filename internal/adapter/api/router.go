@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"encoding/json"
+	"reflect"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
@@ -55,6 +57,14 @@ func (h *HttpRouters) Header(rw http.ResponseWriter, req *http.Request) {
 	childLogger.Info().Str("func","Header").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 	
 	json.NewEncoder(rw).Encode(req.Header)
+}
+
+// About show all context values
+func (h *HttpRouters) Context(rw http.ResponseWriter, req *http.Request) {
+	childLogger.Info().Str("func","Context").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	
+	contextValues := reflect.ValueOf(req.Context()).Elem()
+	json.NewEncoder(rw).Encode(fmt.Sprintf("%v",contextValues))
 }
 
 // About do payment
