@@ -16,7 +16,8 @@ var producerWorker go_core_event.ProducerWorker
 
 type WorkerEvent struct {
 	Topics	[]string
-	WorkerKafka *go_core_event.ProducerWorker 
+	WorkerKafka *go_core_event.ProducerWorker
+	KafkaConfigurations *go_core_event.KafkaConfigurations
 }
 
 // About create a worker producer kafka
@@ -36,6 +37,7 @@ func NewWorkerEvent(ctx context.Context, topics []string, kafkaConfigurations *g
 	return &WorkerEvent{
 		Topics: topics,
 		WorkerKafka: workerKafka,
+		KafkaConfigurations: kafkaConfigurations,
 	},nil
 }
 
@@ -62,5 +64,34 @@ func NewWorkerEventTX(ctx context.Context, topics []string, kafkaConfigurations 
 	return &WorkerEvent{
 		Topics: topics,
 		WorkerKafka: workerKafka,
+		KafkaConfigurations: kafkaConfigurations,
 	},nil
+}
+
+// Above destroy ans create a new producer in case of failed abort
+func (w *WorkerEvent) DestroyWorkerEventProducerTx(ctx context.Context) (error) {
+	childLogger.Info().Str("func","DestroyWorkerEventProducerTx").Send()
+
+	//trace
+	span := tracerProvider.Span(ctx, "adapter.event.DestroyWorkerEventProducerTx")
+	defer span.End()
+
+	w.WorkerKafka.Close()	
+
+	new_workerKafka, err := producerWorker.NewProducerWorkerTX(w.KafkaConfigurations)
+	if err != nil {
+		childLogger.Error().Err(err).Send()
+		return err
+	}
+
+	// Start Kafka InitTransactions
+	err = new_workerKafka.InitTransactions(ctx)
+	if err != nil {
+		childLogger.Error().Err(err).Send()
+		return  err
+	}
+
+	w.WorkerKafka = new_workerKafka
+
+	return nil
 }

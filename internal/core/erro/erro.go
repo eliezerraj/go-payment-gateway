@@ -14,4 +14,5 @@ var (
 	ErrServer		 	= errors.New("server identified error")
 	ErrUnmarshal 		= errors.New("unmarshal json error")
 	ErrUpdate			= errors.New("update unsuccessful")
+	ErrForceRollback 	= errors.New("force rollback")
 )
