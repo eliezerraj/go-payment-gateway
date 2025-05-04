@@ -15,7 +15,8 @@ import(
 	"github.com/go-payment-gateway/internal/core/erro"
 	"github.com/go-payment-gateway/internal/adapter/database"
 	"github.com/go-payment-gateway/internal/adapter/event"
-	
+
+	go_core_pg "github.com/eliezerraj/go-core/database/pg"
 	go_core_observ "github.com/eliezerraj/go-core/observability"
 	go_core_api "github.com/eliezerraj/go-core/api"
 
@@ -63,6 +64,13 @@ func errorStatusCode(statusCode int, serviceName string) error{
 	return err
 }
 
+// About handle/convert http status code
+func (s *WorkerService) Stat(ctx context.Context) (go_core_pg.PoolStats){
+	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	return s.workerRepository.Stat(ctx)
+}
+
 // About create a payment data
 func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) (*model.Payment, error){
 	childLogger.Info().Str("func","AddPayment").Interface("trace-request-id", ctx.Value("trace-request-id")).Interface("payment", payment).Send()
@@ -76,6 +84,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	if err != nil {
 		return nil, err
 	}
+	defer s.workerRepository.DatabasePGServer.ReleaseTx(conn)
 
 	// Handle the transaction
 	defer func() {
@@ -83,8 +92,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 			tx.Rollback(ctx)
 		} else {
 			tx.Commit(ctx)
-		}
-		s.workerRepository.DatabasePGServer.ReleaseTx(conn)
+		}	
 		span.End()
 	}()
 
@@ -316,6 +324,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	if err != nil {
 		return nil, err
 	}
+	defer s.workerRepository.DatabasePGServer.ReleaseTx(conn)
 
 	// handle connection
 	defer func() {
@@ -326,10 +335,6 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 			childLogger.Info().Interface("trace-request-id", trace_id ).Msg("COMMIT TX !!!")
 			tx.Commit(ctx)
 		}
-		
-		childLogger.Info().Interface("trace-request-id", trace_id ).Msg("Release Conn !!!")
-		
-		s.workerRepository.DatabasePGServer.ReleaseTx(conn)
 		span.End()
 	}()
 
@@ -465,8 +470,9 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 
 	// trace
 	span := tracerProvider.Span(ctx, "service.ProducerEventKafka")
-	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 	defer span.End()
+
+	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 
 	// Create a transacrion
 	err = s.workerEvent.WorkerKafka.BeginTransaction()
