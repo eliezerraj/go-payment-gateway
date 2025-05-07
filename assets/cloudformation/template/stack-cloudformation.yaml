@@ -11,6 +11,8 @@ Parameters:
     Type: String
   providerURL:
     Type: String
+  providerURL2:
+    Type: String
   ServiceAccountName:
     Type: String
     Default: sa-go-payment-gateway
