@@ -15,7 +15,9 @@ import(
 	"github.com/go-payment-gateway/internal/adapter/database"
 
 	"github.com/go-payment-gateway/internal/adapter/event"
+	
 	go_core_pg "github.com/eliezerraj/go-core/database/pg"
+	go_core_api "github.com/eliezerraj/go-core/api"
 )
 
 var(
@@ -80,9 +82,15 @@ func main (){
 		childLogger.Error().Err(err).Send()
 	}
 	
+	// Create a go-core api service for client http
+	coreRestApiService := go_core_api.NewRestApiService()
+
 	// wire	
 	database := database.NewWorkerRepository(&databasePGServer)
-	workerService := service.NewWorkerService(database, appServer.ApiService, workerEvent)
+	workerService := service.NewWorkerService(	*coreRestApiService, 
+												database, 
+												appServer.ApiService, 
+												workerEvent)
 	httpRouters := api.NewHttpRouters(workerService)
 
 	// start server

@@ -29,18 +29,21 @@ var childLogger = log.With().Str("component","go-payment-gateway").Str("package"
 var apiService go_core_api.ApiService
 
 type WorkerService struct {
+	goCoreRestApiService	go_core_api.ApiService
 	apiService			[]model.ApiService
 	workerRepository 	*database.WorkerRepository
 	workerEvent			*event.WorkerEvent
 }
 
 // About create a new worker service
-func NewWorkerService(	workerRepository *database.WorkerRepository,
+func NewWorkerService(	goCoreRestApiService	go_core_api.ApiService,	
+						workerRepository *database.WorkerRepository,
 						apiService		[]model.ApiService,
 						workerEvent	*event.WorkerEvent,) *WorkerService{
 	childLogger.Info().Str("func","NewWorkerService").Send()
 
 	return &WorkerService{
+		goCoreRestApiService: goCoreRestApiService,
 		apiService: apiService,
 		workerRepository: workerRepository,
 		workerEvent: workerEvent,
@@ -131,7 +134,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// get card data
-	res_payload, statusCode, err := apiService.CallRestApi(	ctx,
+	res_payload, statusCode, err := apiService.CallRestApiV1(ctx,
+															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
 
@@ -196,7 +200,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// Call go-limit
-	res_limit, statusCode, err := apiService.CallRestApi(ctx,
+	res_limit, statusCode, err := apiService.CallRestApiV1(ctx,
+														s.goCoreRestApiService.Client,	
 														httpClient, 
 														transactionLimit)
 
@@ -244,7 +249,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// Call go-ledger
-	_, statusCode, err = apiService.CallRestApi(ctx,
+	_, statusCode, err = apiService.CallRestApiV1(ctx,
+												s.goCoreRestApiService.Client,
 												httpClient, 
 												moviment)
 	if err != nil {
@@ -275,7 +281,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// get card data
-	res_payload, statusCode, err = apiService.CallRestApi(	ctx,
+	res_payload, statusCode, err = apiService.CallRestApiV1(ctx,
+															s.goCoreRestApiService.Client,
 															httpClient, 
 															card_parsed)
 	if err != nil {
@@ -358,7 +365,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		Headers: &headers,
 	}
 
-	res_payload, statusCode, err := apiService.CallRestApi(	ctx,
+	res_payload, statusCode, err := apiService.CallRestApiV1(ctx,
+															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
 	if err != nil {
@@ -385,7 +393,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		Headers: &headers,
 	}
 
-	res_payload, statusCode, err = apiService.CallRestApi(	ctx,
+	res_payload, statusCode, err = apiService.CallRestApiV1(ctx,
+															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
 	if err != nil {
