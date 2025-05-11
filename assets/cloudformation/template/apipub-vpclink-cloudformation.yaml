@@ -290,9 +290,9 @@ Resources:
       WebACLArn:
         Ref: WafaclArn
 
-Outputs:
-  ApiPublicGoGatewayGrpcGateway:
-    Value:
-      Ref: ApiPublicGoPaymentGateway
-    Export:
-      Name: ApiPublicGoPaymentGateway
+#Outputs:
+#  ApiPublicGoGatewayGrpcGateway:
+#    Value:
+#      Ref: ApiPublicGoPaymentGateway
+#    Export:
+#      Name: ApiPublicGoPaymentGateway
