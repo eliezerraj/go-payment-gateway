@@ -8,6 +8,7 @@ import(
 	"errors"
 	"net/http"
 	"encoding/json"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 
@@ -33,6 +34,7 @@ type WorkerService struct {
 	apiService			[]model.ApiService
 	workerRepository 	*database.WorkerRepository
 	workerEvent			*event.WorkerEvent
+	mutex    			sync.Mutex
 }
 
 // About create a new worker service
@@ -482,6 +484,10 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 	defer span.End()
 
 	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+
+	// create a mutex to avoid commit over a transaction on air
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	// Create a transacrion
 	err = s.workerEvent.WorkerKafka.BeginTransaction()
