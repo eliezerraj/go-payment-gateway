@@ -260,3 +260,142 @@ func (w *WorkerRepository) UpdatePixTransaction(ctx context.Context, tx pgx.Tx, 
 	}
 	return row.RowsAffected(), nil
 }
+
+// About stat pix transaction
+func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAccount model.PixStatusAccount) (*model.PixStatus, error){
+	childLogger.Info().Str("func","StatPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	// Trace
+	span := tracerProvider.Span(ctx, "database.StatPixTransaction")
+	defer span.End()
+
+	// Get connection
+	conn, err := w.DatabasePGServer.Acquire(ctx)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePGServer.Release(conn)
+
+	// prepare
+	res_listPixStatusCount := []model.PixStatusCount{}
+	res_pixStatusCount := model.PixStatusCount{}
+
+	// query and execute
+	query1 :=  `select pt.status, count(*) as count
+				from pix_transaction pt
+				group by pt.status`
+
+	rows1, err := conn.Query(ctx, query1)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer rows1.Close()
+
+	for rows1.Next() {
+		err := rows1.Scan( 	&res_pixStatusCount.Status, 
+							&res_pixStatusCount.Count, 
+		)
+		if err != nil {
+			return nil, errors.New(err.Error())
+        }
+		res_listPixStatusCount = append(res_listPixStatusCount, res_pixStatusCount)
+	}	
+
+	// prepare
+	res_pixStatusAccount:= model.PixStatusAccount{}
+
+	// query and execute
+	query2 :=  `select account_id_from, account_id_to , status, count(*)
+				from pix_transaction pt
+				where account_id_from = $1
+				group by account_id_from, account_id_to, status
+				order by account_id_from`
+
+	rows2, err := conn.Query(ctx, query2, pixStatusAccount.AccountFrom)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		err := rows2.Scan( 	&res_pixStatusAccount.AccountFrom, 
+							&res_pixStatusAccount.AccountTo,
+							&res_pixStatusAccount.Status, 
+							&res_pixStatusAccount.Count,  
+		)
+		if err != nil {
+			return nil, errors.New(err.Error())
+        }
+	}	
+
+	res_pixStatus:= model.PixStatus{PixStatusCount: 	&res_listPixStatusCount,
+									PixStatusAccount:	&res_pixStatusAccount,
+									}
+
+	return &res_pixStatus , nil
+}
+
+// About get pix_transaction
+func (w *WorkerRepository) GetPixTransaction(ctx context.Context, pixTransaction model.PixTransaction) (*model.PixTransaction, error){
+	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	
+	// Trace
+	span := tracerProvider.Span(ctx, "database.GetPixTransaction")
+	defer span.End()
+
+	// Get connection
+	conn, err := w.DatabasePGServer.Acquire(ctx)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePGServer.Release(conn)
+
+	// prepare
+	accountFrom := model.Account{}
+	accountTo	:= model.Account{}
+	res_pixTransaction := model.PixTransaction{}
+
+	// query and execute
+	query :=  `	SELECT id, 
+						account_id_from, 
+						account_id_to, 
+						transaction_id, 
+						transaction_at, 
+						currency, 
+						amount, 
+						status, 
+						request_id, 
+						created_at, 
+						updated_at
+				FROM public.pix_transaction
+				WHERE id = $1`
+
+	rows, err := conn.Query(ctx, query, pixTransaction.ID)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan( 	&res_pixTransaction.ID, 
+							&accountFrom.AccountID, 
+							&accountTo.AccountID, 
+							&res_pixTransaction.TransactionId, 
+							&res_pixTransaction.TransactionAt,
+							&res_pixTransaction.Currency,
+							&res_pixTransaction.Amount,
+							&res_pixTransaction.Status,
+							&res_pixTransaction.RequestId,
+							&res_pixTransaction.CreatedAt,
+							&res_pixTransaction.UpdatedAt,
+		)
+		res_pixTransaction.AccountFrom = accountFrom
+		res_pixTransaction.AccountTo = accountTo
+		if err != nil {
+			return nil, errors.New(err.Error())
+        }
+		return &res_pixTransaction, nil
+	}
+	
+	return nil, erro.ErrNotFound
+}

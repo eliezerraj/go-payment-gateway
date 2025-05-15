@@ -150,3 +150,20 @@ type PixTransaction struct {
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
 	UpdatedAt		*time.Time 	`json:"updated_at,omitempty"`
 }
+
+type PixStatus struct {
+	PixStatusCount		*[]PixStatusCount	`json:"pix_status_count,omitempty"`
+	PixStatusAccount	*PixStatusAccount	`json:"pix_account_count,omitempty"`
+}
+
+type PixStatusCount struct {
+	Status		string	`json:"status,omitempty"`
+	Count		int		`json:"count,omitempty"`
+}
+
+type PixStatusAccount struct {
+	AccountFrom		string		`json:"account_from,omitempty"`
+	AccountTo		string		`json:"account_to,omitempty"`
+	Status			string		`json:"status,omitempty"`
+	Count			int			`json:"count,omitempty"`
+}

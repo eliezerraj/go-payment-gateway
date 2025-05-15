@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"net/http"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/go-payment-gateway/internal/core/erro"
 
 	"github.com/eliezerraj/go-core/coreJson"
+	"github.com/gorilla/mux"
 
 	go_core_observ "github.com/eliezerraj/go-core/observability"
 	go_core_tools "github.com/eliezerraj/go-core/tools"
@@ -125,6 +127,68 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
 	defer req.Body.Close()
 
 	res, err := h.workerService.PixTransaction(req.Context(), pixTransaction)
+	if err != nil {
+		switch err {
+		case erro.ErrNotFound:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		default:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
+		}
+		return &core_apiError
+	}
+	
+	return core_json.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get a pix transaction
+func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	
+	span := tracerProvider.Span(req.Context(), "adapter.api.GetPixTransaction")
+	defer span.End()
+	
+	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+
+	vars := mux.Vars(req)
+	varID := vars["id"]
+
+	varIDint, err := strconv.Atoi(varID)
+    if err != nil {
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusBadRequest)
+		return &core_apiError
+    }
+
+	pixTransaction := model.PixTransaction{ID: varIDint}
+
+	res, err := h.workerService.GetPixTransaction(req.Context(), pixTransaction)
+	if err != nil {
+		switch err {
+		case erro.ErrNotFound:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		default:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
+		}
+		return &core_apiError
+	}
+	
+	return core_json.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get a pix transaction
+func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Info().Str("func","StatPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	
+	span := tracerProvider.Span(req.Context(), "adapter.api.StatPixTransaction")
+	defer span.End()
+	
+	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+
+	vars := mux.Vars(req)
+	varID := vars["id"]
+
+	pixStatusAccount := model.PixStatusAccount{AccountFrom: varID}
+
+	res, err := h.workerService.StatPixTransaction(req.Context(), pixStatusAccount)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
