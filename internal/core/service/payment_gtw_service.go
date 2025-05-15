@@ -411,7 +411,9 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	json.Unmarshal(jsonString, &account_to_parsed)
 
 	stepProcess02 := model.StepProcess{	Name: "ACCOUNT-TO:OK",
-										ProcessedAt: time.Now(),}
+										ProcessedAt: time.Now(),
+									}
+
 	list_stepProcess = append(list_stepProcess, stepProcess02)
 	// ------------------------  STEP-3 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 03 (PIX-TRANSACTION) <===")
@@ -419,6 +421,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.AccountFrom = account_from_parsed
 	pixTransaction.AccountTo = account_to_parsed
 	pixTransaction.Status = "PENDING"
+	pixTransaction.RequestId = trace_id
 	pixTransaction.TransactionAt = time.Now()
 	
 	// add pix payment
@@ -431,7 +434,9 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.CreatedAt = res_pixTransaction.CreatedAt
 
 	stepProcess03 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:PENDING",
-										ProcessedAt: time.Now(),}
+										ProcessedAt: time.Now(),
+									}
+
 	list_stepProcess = append(list_stepProcess, stepProcess03)
 	// ------------------------  STEP-4 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 04 (SEND TO LEDGE VIA MESSAGE) <===")
@@ -447,7 +452,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	}
 
 	stepProcess04 := model.StepProcess{	Name: stepProcessStatus,
-										ProcessedAt: time.Now(),}
+										ProcessedAt: time.Now(),
+									}
 	list_stepProcess = append(list_stepProcess, stepProcess04)
 	// ------------------------  STEP-4 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 05 (UPDATE PIX-TRANSACTION <===")
@@ -558,4 +564,30 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 	childLogger.Info().Interface("trace-request-id", trace_id ).Msg("KAFKA COMMIT !!!")	
 
 	return
+}
+
+// About handle/convert http status code
+func (s *WorkerService) StatPixTransaction(ctx context.Context, pixStatusAccount model.PixStatusAccount) (*model.PixStatus, error){
+	childLogger.Info().Str("func","StatPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	// create a payment
+	res_pixStatus, err := s.workerRepository.StatPixTransaction(ctx, pixStatusAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	return res_pixStatus, nil
+}
+
+// About handle/convert http status code
+func (s *WorkerService) GetPixTransaction(ctx context.Context, pixTransaction model.PixTransaction) (*model.PixTransaction, error){
+	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	// create a payment
+	res_pixTransaction, err := s.workerRepository.GetPixTransaction(ctx, pixTransaction)
+	if err != nil {
+		return nil, err
+	}
+
+	return res_pixTransaction, nil
 }

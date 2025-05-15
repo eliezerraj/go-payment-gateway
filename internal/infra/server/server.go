@@ -108,6 +108,14 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 	pixTransaction.HandleFunc("/pixTransaction", core_middleware.MiddleWareErrorHandler(httpRouters.PixTransaction))		
 	pixTransaction.Use(otelmux.Middleware("go-payment-gateway"))
 
+	getPixTransaction := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	getPixTransaction.HandleFunc("/pixTransaction/{id}", core_middleware.MiddleWareErrorHandler(httpRouters.GetPixTransaction))		
+	getPixTransaction.Use(otelmux.Middleware("go-payment-gateway"))
+
+	statPixTransaction := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	statPixTransaction.HandleFunc("/statPixTransaction/{id}", core_middleware.MiddleWareErrorHandler(httpRouters.StatPixTransaction))		
+	statPixTransaction.Use(otelmux.Middleware("go-payment-gateway"))
+
 	srv := http.Server{
 		Addr:         ":" +  strconv.Itoa(h.httpServer.Port),      	
 		Handler:      myRouter,                	          
