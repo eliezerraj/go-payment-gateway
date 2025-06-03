@@ -179,12 +179,12 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02 (LIMIT) <===")
 	// Check the limits
 
-	transactionLimit := model.TransactionLimit{ Category: 		"CREDIT",
-												CardNumber: 	payment.CardNumber,
-												TransactionId: 	*payment.TransactionId,
-												Mcc: 			payment.Mcc,
-												Currency:		payment.Currency,
-												Amount:			payment.Amount }
+	limit := model.Limit{ 	TransactionId: *payment.TransactionId,
+						  	Key: 	payment.CardNumber,
+							TypeLimit: "CREDIT",
+							OrderLimit: "MCC:" + payment.Mcc,
+							Amount:	payment.Amount,
+							Quantity: 1}
 
 	// Set headers
 	headers = map[string]string{
@@ -195,30 +195,36 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 	// Prepare http client
 	httpClient = go_core_api.HttpClient {
-		Url: fmt.Sprintf("%v%v",s.apiService[1].Url,"/transactionLimit"),
+		Url: fmt.Sprintf("%v%v",s.apiService[1].Url,"/checkLimitTransaction"),
 		Method: s.apiService[1].Method,
 		Timeout: 15,
 		Headers: &headers,
 	}
 
 	// Call go-limit
-	res_limit, statusCode, err := apiService.CallRestApiV1(ctx,
-														s.goCoreRestApiService.Client,	
-														httpClient, 
-														transactionLimit)
+	res_limit, statusCode, err := apiService.CallRestApiV1(	ctx,
+															s.goCoreRestApiService.Client,	
+															httpClient, 
+															limit)
 
 	if err != nil {
 		return nil, errorStatusCode(statusCode, s.apiService[1].Name)
 	}
 
+	list_limit_transaction := []model.LimitTransaction{}
 	jsonString, err = json.Marshal(res_limit)
 	if err != nil {
 		return nil, errors.New(err.Error())
     }
-	json.Unmarshal(jsonString, &transactionLimit)
+	json.Unmarshal(jsonString, &list_limit_transaction)
 	
+	var list_status = []string{}
+	for _, val := range list_limit_transaction {
+		list_status = append(list_status, val.Status)
+	}
+
 	// add step 02
-	stepProcess02 := model.StepProcess{	Name: fmt.Sprintf("LIMIT:%v", transactionLimit.Status),
+	stepProcess02 := model.StepProcess{	Name: fmt.Sprintf("LIMIT:%v", list_status),
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess02)
 
@@ -321,6 +327,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	return &payment, nil
 }
 
+// About create pix transaction
 func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction model.PixTransaction) (*model.PixTransaction, error){
 	childLogger.Info().Str("func","PixTransaction").Interface("trace-request-id", ctx.Value("trace-request-id")).Interface("pixTransaction", pixTransaction).Send()
 
@@ -385,6 +392,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	stepProcess01 := model.StepProcess{	Name: "ACCOUNT-FROM:OK",
 										ProcessedAt: time.Now(),}
 	list_stepProcess = append(list_stepProcess, stepProcess01)
+
 	// ------------------------  STEP-2 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 02 (ACCOUNT TO) <===")
 
@@ -415,6 +423,60 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 									}
 
 	list_stepProcess = append(list_stepProcess, stepProcess02)
+
+	// ------------------------  STEP-2.1 ----------------------------------//
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02.1 (LIMIT) <===")
+	// Check the limits
+
+	limit := model.Limit{ 	TransactionId: pixTransaction.TransactionId,
+						  	Key: account_from_parsed.AccountID + ":" + account_to_parsed.AccountID,
+							TypeLimit: "TRANSFER",
+							OrderLimit: "WIRE",
+							Amount:	pixTransaction.Amount,
+							Quantity: 1}
+
+	// Set headers
+	headers = map[string]string{
+		"Content-Type": "application/json",
+		"X-Request-Id": trace_id,
+		"x-apigw-api-id": s.apiService[1].XApigwApiId,
+		"Host": s.apiService[1].HostName,
+	}
+	// Prepare http client
+	httpClient = go_core_api.HttpClient {
+		Url: fmt.Sprintf("%v%v",s.apiService[1].Url,"/checkLimitTransaction"),
+		Method: s.apiService[1].Method,
+		Timeout: 15,
+		Headers: &headers,
+	}
+
+	// Call go-limit
+	res_limit, statusCode, err := apiService.CallRestApiV1(	ctx,
+															s.goCoreRestApiService.Client,	
+															httpClient, 
+															limit)
+
+	if err != nil {
+		return nil, errorStatusCode(statusCode, s.apiService[1].Name)
+	}
+
+	list_limit_transaction := []model.LimitTransaction{}
+	jsonString, err = json.Marshal(res_limit)
+	if err != nil {
+		return nil, errors.New(err.Error())
+    }
+	json.Unmarshal(jsonString, &list_limit_transaction)
+	
+	var list_status = []string{}
+	for _, val := range list_limit_transaction {
+		list_status = append(list_status, val.Status)
+	}
+
+	// add step 02
+	stepProcess021 := model.StepProcess{Name: fmt.Sprintf("LIMIT:%v", list_status),
+										ProcessedAt: time.Now(),}
+	list_stepProcess = append(list_stepProcess, stepProcess021)
+
 	// ------------------------  STEP-3 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 03 (PIX-TRANSACTION) <===")
 
@@ -434,8 +496,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.CreatedAt = res_pixTransaction.CreatedAt
 
 	stepProcess03 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:PENDING",
-										ProcessedAt: time.Now(),
-									}
+										ProcessedAt: time.Now(),}
 
 	list_stepProcess = append(list_stepProcess, stepProcess03)
 	// ------------------------  STEP-4 ----------------------------------//
@@ -579,7 +640,7 @@ func (s *WorkerService) StatPixTransaction(ctx context.Context, pixStatusAccount
 	return res_pixStatus, nil
 }
 
-// About handle/convert http status code
+// About get pix info transaction
 func (s *WorkerService) GetPixTransaction(ctx context.Context, pixTransaction model.PixTransaction) (*model.PixTransaction, error){
 	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
