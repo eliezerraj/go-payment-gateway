@@ -31,10 +31,10 @@ var apiService go_core_api.ApiService
 
 type WorkerService struct {
 	goCoreRestApiService	go_core_api.ApiService
-	apiService			[]model.ApiService
-	workerRepository 	*database.WorkerRepository
-	workerEvent			*event.WorkerEvent
-	mutex    			sync.Mutex
+	apiService				[]model.ApiService
+	workerRepository 		*database.WorkerRepository
+	workerEvent				*event.WorkerEvent
+	mutex    				sync.Mutex
 }
 
 // About create a new worker service
@@ -74,6 +74,15 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_pg.PoolStats){
 	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
 	return s.workerRepository.Stat(ctx)
+}
+
+// About step process
+func appentStepProcess(nameStepProcess string, listStepProcess []model.StepProcess) ([]model.StepProcess) {
+	
+	stepProcess := model.StepProcess{	Name: nameStepProcess,
+										ProcessedAt: time.Now(),}
+	
+	return append(listStepProcess, stepProcess) 
 }
 
 // About create a payment data
@@ -169,12 +178,11 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 
 	// Create a StepProcess
 	list_stepProcess := []model.StepProcess{}
-
-	stepProcess01 := model.StepProcess{Name: "AUTHORIZATION:STATUS:PENDING",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess01)
-	payment.StepProcess = &list_stepProcess
-
+	var stepProcessStatus string
+	
+	stepProcessStatus = "AUTHORIZATION:STATUS:PENDING"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	
 	// ------------------------  STEP-2 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02 (LIMIT) <===")
 	// Check the limits
@@ -224,9 +232,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// add step 02
-	stepProcess02 := model.StepProcess{	Name: fmt.Sprintf("LIMIT:%v", list_status),
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess02)
+	stepProcessStatus = fmt.Sprintf("LIMIT:%v", list_status)
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	// ------------------------  STEP-3 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 03 (FRAUD) <===")
@@ -266,9 +273,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// add step 04
-	stepProcess04 := model.StepProcess{	Name: "LEDGER:WITHDRAW:OK",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess04)
+	stepProcessStatus = "LEDGER:WITHDRAW:OK"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	// ------------------------  STEP-5 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 05 (CARDS:ATC) <===")
@@ -297,9 +303,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 		return nil, errorStatusCode(statusCode, s.apiService[3].Name)
 	}
 
-	stepProcess05 := model.StepProcess{	Name: "CARD-ATC:OK",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess05)
+	stepProcessStatus = "CARD-ATC:OK"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 	
 	// ------------------------  STEP-6 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - (UPDATE PAYMENT) <===")
@@ -315,9 +320,8 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 		return nil, err
 	}
 
-	stepProcess06 := model.StepProcess{Name: "AUTHORIZATION:STATUS:OK",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess06)
+	stepProcessStatus = "AUTHORIZATION:STATUS:OK"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	childLogger.Info().Str("func","AddPayment: ===> FINAL").Interface("payment", payment).Send()
 	
@@ -356,6 +360,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 
 	// Create a StepProcess
 	list_stepProcess := []model.StepProcess{}
+	var stepProcessStatus string
 
 	// ------------------------  STEP-1 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 01 (ACCOUNT FROM) <===")
@@ -389,9 +394,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	var account_from_parsed model.Account
 	json.Unmarshal(jsonString, &account_from_parsed)
 
-	stepProcess01 := model.StepProcess{	Name: "ACCOUNT-FROM:OK",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess01)
+	stepProcessStatus = "ACCOUNT-FROM:OK"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	// ------------------------  STEP-2 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 02 (ACCOUNT TO) <===")
@@ -418,11 +422,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	var account_to_parsed model.Account
 	json.Unmarshal(jsonString, &account_to_parsed)
 
-	stepProcess02 := model.StepProcess{	Name: "ACCOUNT-TO:OK",
-										ProcessedAt: time.Now(),
-									}
-
-	list_stepProcess = append(list_stepProcess, stepProcess02)
+	stepProcessStatus = "ACCOUNT-TO:OK"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	// ------------------------  STEP-2.1 ----------------------------------//
 	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02.1 (LIMIT) <===")
@@ -472,10 +473,8 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		list_status = append(list_status, val.Status)
 	}
 
-	// add step 02
-	stepProcess021 := model.StepProcess{Name: fmt.Sprintf("LIMIT:%v", list_status),
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess021)
+	stepProcessStatus = fmt.Sprintf("LIMIT:%v", list_status)
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	// ------------------------  STEP-3 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 03 (PIX-TRANSACTION) <===")
@@ -495,16 +494,23 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.ID = res_pixTransaction.ID
 	pixTransaction.CreatedAt = res_pixTransaction.CreatedAt
 
-	stepProcess03 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:PENDING",
-										ProcessedAt: time.Now(),}
+	stepProcessStatus = "PIX-TRANSACTION:STATUS:PENDING"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
-	list_stepProcess = append(list_stepProcess, stepProcess03)
 	// ------------------------  STEP-4 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 04 (SEND TO LEDGE VIA MESSAGE) <===")
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 04 (SEND TO LEDGE VIA MESSAGE - KAFKA) <===")
 
-	var stepProcessStatus = "LEDGER:WIRE-TRANSFER:IN-QUEUE"
+	stepProcessStatus = "LEDGER:WIRE-TRANSFER:IN-QUEUE"
 	if s.workerEvent != nil {
-		err = s.ProducerEventKafka(ctx, pixTransaction)
+
+		// Prepare to event
+		key := strconv.Itoa(pixTransaction.ID)
+		payload_bytes, err := json.Marshal(pixTransaction)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.ProducerEventKafka2(ctx, s.workerEvent.Topics[0], key, payload_bytes)
 		if err != nil {
 			return nil, err
 		}
@@ -512,11 +518,9 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		stepProcessStatus = "LEDGER:WIRE-TRANSFER:ERROR NOT SEND KAFKA UNREACHABLE"
 	}
 
-	stepProcess04 := model.StepProcess{	Name: stepProcessStatus,
-										ProcessedAt: time.Now(),
-									}
-	list_stepProcess = append(list_stepProcess, stepProcess04)
-	// ------------------------  STEP-4 ----------------------------------//
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+
+	// ------------------------  STEP-5 ----------------------------------//
 	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 05 (UPDATE PIX-TRANSACTION <===")
 
 	// add the step proccess
@@ -533,9 +537,39 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		return nil, err
 	}
 
-	stepProcess05 := model.StepProcess{	Name: "PIX-TRANSACTION:STATUS:IN-QUEUE",
-										ProcessedAt: time.Now(),}
-	list_stepProcess = append(list_stepProcess, stepProcess05)
+	stepProcessStatus = "PIX-TRANSACTION:STATUS:IN-QUEUE"
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+
+	// ------------------------  STEP-6 ----------------------------------//
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 06 (WEBHOOK) <===")
+
+	stepProcessStatus = "WEBHOOK:PAYMENT:IN-QUEUE"
+	if s.workerEvent != nil {
+		
+		// Prepare to event
+		payload_bytes, err := json.Marshal(pixTransaction)
+		if err != nil {
+			return nil, err
+		}
+		weebHook := model.WebHook{	Topic: s.workerEvent.Topics[1],
+									Type: "TOPIC:PIX",
+									Payload: payload_bytes}
+
+		key := strconv.Itoa(pixTransaction.ID)
+		payload_bytes, err = json.Marshal(weebHook)
+		if err != nil {
+			return nil, err
+		}
+
+		err = s.ProducerEventKafka2(ctx, s.workerEvent.Topics[1], key, payload_bytes)
+		if err != nil {
+			return nil, err
+		}
+	}else {
+		stepProcessStatus = "WEBHOOK:PAYMENT:ERROR NOT SEND KAFKA UNREACHABLE"
+	}
+
+	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
 	childLogger.Info().Str("func","AddPayment: ===> FINAL").Interface("pixTransaction", pixTransaction).Send()
 	
@@ -543,7 +577,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 }
 
 //About producer a event in kafka
-func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction model.PixTransaction) (err error) {
+/*func(s *WorkerService) ProducerEventKafka(ctx context.Context, topic string, pixTransaction model.PixTransaction) (err error) {
 	childLogger.Info().Str("func","ProducerEventKafka").Interface("trace-request-id", ctx.Value("trace-request-id")).Send()
 
 	// trace
@@ -586,7 +620,7 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 	headers_msk["TraceID"] = spanContext.TraceID().String()
 	headers_msk["SpanID"] = spanContext.SpanID().String()
 
-		// Prepare to event
+	// Prepare to event
 	key := strconv.Itoa(pixTransaction.ID)
 	payload_bytes, err := json.Marshal(pixTransaction)
 	if err != nil {
@@ -594,7 +628,7 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 	}
 
 	// publish event
-	err = s.workerEvent.WorkerKafka.Producer(s.workerEvent.Topics[0], key, &headers_msk, payload_bytes)
+	err = s.workerEvent.WorkerKafka.Producer(topic, key, &headers_msk, payload_bytes)
 
 	//force a error SIMULATION
 	if(trace_id == "force-rollback"){
@@ -625,7 +659,7 @@ func(s *WorkerService) ProducerEventKafka(ctx context.Context, pixTransaction mo
 	childLogger.Info().Interface("trace-request-id", trace_id ).Msg("KAFKA COMMIT !!!")	
 
 	return
-}
+}*/
 
 // About handle/convert http status code
 func (s *WorkerService) StatPixTransaction(ctx context.Context, pixStatusAccount model.PixStatusAccount) (*model.PixStatus, error){
@@ -651,4 +685,82 @@ func (s *WorkerService) GetPixTransaction(ctx context.Context, pixTransaction mo
 	}
 
 	return res_pixTransaction, nil
+}
+
+//About producer a event in kafka
+func(s *WorkerService) ProducerEventKafka2(ctx context.Context, topic string, keyMessage string, payloadBytes []byte) (err error) {
+	childLogger.Info().Str("func","ProducerEventKafka").Interface("trace-request-id", ctx.Value("trace-request-id")).Send()
+
+	// trace
+	span := tracerProvider.Span(ctx, "service.ProducerEventKafka")
+	defer span.End()
+
+	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+
+	// create a mutex to avoid commit over a transaction on air
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	// Create a transacrion
+	err = s.workerEvent.WorkerKafka.BeginTransaction()
+	if err != nil {
+		childLogger.Error().Interface("trace-request-id", trace_id ).Err(err).Msg("failed to kafka BeginTransaction")
+		// Create a new producer and start a transaction
+		err = s.workerEvent.DestroyWorkerEventProducerTx(ctx)
+		if err != nil {
+			return  err
+		}
+		s.workerEvent.WorkerKafka.BeginTransaction()
+		if err != nil {
+			return err
+		}
+		childLogger.Info().Interface("trace-request-id", trace_id ).Msg("success to recreate a new producer")
+	}
+
+	// prepare header
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, &carrier)
+	
+	headers_msk := make(map[string]string)
+	for k, v := range carrier {
+		headers_msk[k] = v
+	}
+
+	spanContext := span.SpanContext()
+	headers_msk["trace-request-id"] = trace_id
+	headers_msk["TraceID"] = spanContext.TraceID().String()
+	headers_msk["SpanID"] = spanContext.SpanID().String()
+
+	// publish event
+	err = s.workerEvent.WorkerKafka.Producer(topic, keyMessage, &headers_msk, payloadBytes)
+
+	//force a error SIMULATION
+	if(trace_id == "force-rollback"){
+		err = erro.ErrForceRollback
+	}
+
+	if err != nil {
+		childLogger.Err(err).Interface("trace-request-id", trace_id ).Msg("KAFKA ROLLBACK !!!")
+		err_msk := s.workerEvent.WorkerKafka.AbortTransaction(ctx)
+		if err_msk != nil {
+			childLogger.Err(err_msk).Interface("trace-request-id", trace_id ).Msg("failed to kafka AbortTransaction")
+			return err_msk
+		}
+		return err
+	}
+
+	err = s.workerEvent.WorkerKafka.CommitTransaction(ctx)
+	if err != nil {
+		childLogger.Err(err).Interface("trace-request-id", trace_id ).Msg("Failed to Kafka CommitTransaction = KAFKA ROLLBACK COMMIT !!!")
+		err_msk := s.workerEvent.WorkerKafka.AbortTransaction(ctx)
+		if err_msk != nil {
+			childLogger.Err(err_msk).Interface("trace-request-id", trace_id ).Msg("failed to kafka AbortTransaction during CommitTransaction")
+			return err_msk
+		}
+		return err
+	}
+
+	childLogger.Info().Interface("trace-request-id", trace_id ).Msg("KAFKA COMMIT !!!")	
+
+	return
 }
