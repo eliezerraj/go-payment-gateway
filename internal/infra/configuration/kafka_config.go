@@ -57,6 +57,8 @@ func GetKafkaEnv() (go_core_event.KafkaConfigurations, []string) {
 	if os.Getenv("TOPIC_PIX") !=  "" {
 		list_topics = append(list_topics, os.Getenv("TOPIC_PIX"))
 	}
-
+	if os.Getenv("TOPIC_WEBHOOK_PIX") !=  "" {
+		list_topics = append(list_topics, os.Getenv("TOPIC_WEBHOOK_PIX"))
+	}
 	return kafkaConfigurations, list_topics
 }

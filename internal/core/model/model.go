@@ -173,3 +173,16 @@ type LimitTransaction struct {
 	Amount			float64 	`json:"amount,omitempty"`
 	CreareAt		time.Time 	`json:"created_at,omitempty"`			
 }
+
+type WebHook struct {
+	ID				int			`json:"id,omitempty"`
+	Host			string 		`json:"host,omitempty"`
+	Url				string 		`json:"url,omitempty"`
+	Method			string 		`json:"method,omitempty"`
+	Topic			string 		`json:"topic,omitempty"`
+	Type			string 		`json:"type,omitempty"`	
+	Payload			[]byte	 	`json:"payload,omitempty"`
+	Status			string  	`json:"status,omitempty"`
+	CreatedAt		time.Time 	`json:"created_at,omitempty"`
+	UpdatedAt		*time.Time 	`json:"updated_at,omitempty"`
+}

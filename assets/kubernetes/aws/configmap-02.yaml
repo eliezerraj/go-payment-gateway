@@ -29,7 +29,8 @@ data:
   KAFKA_PARTITION: "3"
   KAFKA_REPLICATION: "2"
   TOPIC_PIX: "topic.pix.01"
-
+  TOPIC_WEBHOOK_PIX: "topic.pix.01"
+  
   OTEL_EXPORTER_OTLP_ENDPOINT: "arch-eks-01-02-otel-collector-collector.default.svc.cluster.local:4317"
   USE_STDOUT_TRACER_EXPORTER: "false"
   USE_OTLP_COLLECTOR: "true" 
