@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"time"
+	"context"
 	"encoding/json"
 	"reflect"
 	"net/http"
@@ -29,14 +31,17 @@ var tracerProvider 	go_core_observ.TracerProvider
 
 type HttpRouters struct {
 	workerService 	*service.WorkerService
+	ctxTimeout		time.Duration
 }
 
 // Above create routers
-func NewHttpRouters(workerService *service.WorkerService) HttpRouters {
+func NewHttpRouters(workerService *service.WorkerService,
+					ctxTimeout	time.Duration) HttpRouters {
 	childLogger.Info().Str("func","NewHttpRouters").Send()
 
 	return HttpRouters{
 		workerService: workerService,
+		ctxTimeout: ctxTimeout,
 	}
 }
 
@@ -81,11 +86,14 @@ func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
 // About do payment
 func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","AddPayment").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
-	
-	span := tracerProvider.Span(req.Context(), "adapter.api.AddPayment")
+
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	span := tracerProvider.Span(ctx, "adapter.api.AddPayment")
 	defer span.End()
 	
-	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	payment := model.Payment{}
 	err := json.NewDecoder(req.Body).Decode(&payment)
@@ -95,7 +103,7 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
     }
 	defer req.Body.Close()
 
-	res, err := h.workerService.AddPayment(req.Context(), payment)
+	res, err := h.workerService.AddPayment(ctx, payment)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
@@ -112,11 +120,14 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
 // About add a pix moviment transaction
 func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","PixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
-	
-	span := tracerProvider.Span(req.Context(), "adapter.api.PixTransaction")
+
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	span := tracerProvider.Span(ctx, "adapter.api.PixTransaction")
 	defer span.End()
 	
-	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	pixTransaction := model.PixTransaction{}
 	err := json.NewDecoder(req.Body).Decode(&pixTransaction)
@@ -126,7 +137,7 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
     }
 	defer req.Body.Close()
 
-	res, err := h.workerService.PixTransaction(req.Context(), pixTransaction)
+	res, err := h.workerService.PixTransaction(ctx, pixTransaction)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
@@ -143,11 +154,14 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
 // About get a pix transaction
 func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
-	
-	span := tracerProvider.Span(req.Context(), "adapter.api.GetPixTransaction")
+
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	span := tracerProvider.Span(ctx, "adapter.api.GetPixTransaction")
 	defer span.End()
 	
-	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	vars := mux.Vars(req)
 	varID := vars["id"]
@@ -160,7 +174,7 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
 
 	pixTransaction := model.PixTransaction{ID: varIDint}
 
-	res, err := h.workerService.GetPixTransaction(req.Context(), pixTransaction)
+	res, err := h.workerService.GetPixTransaction(ctx, pixTransaction)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
@@ -177,18 +191,21 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
 // About get a pix transaction
 func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","StatPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
-	
-	span := tracerProvider.Span(req.Context(), "adapter.api.StatPixTransaction")
+
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	span := tracerProvider.Span(ctx, "adapter.api.StatPixTransaction")
 	defer span.End()
 	
-	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	vars := mux.Vars(req)
 	varID := vars["id"]
 
 	pixStatusAccount := model.PixStatusAccount{AccountFrom: varID}
 
-	res, err := h.workerService.StatPixTransaction(req.Context(), pixStatusAccount)
+	res, err := h.workerService.StatPixTransaction(ctx, pixStatusAccount)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
