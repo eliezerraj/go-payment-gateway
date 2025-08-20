@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -105,9 +106,14 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
 
 	res, err := h.workerService.AddPayment(ctx, payment)
 	if err != nil {
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+    		err = erro.ErrTimeout
+		} 
 		switch err {
 		case erro.ErrNotFound:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		case erro.ErrTimeout:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)
 		default:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
 		}
@@ -139,9 +145,14 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
 
 	res, err := h.workerService.PixTransaction(ctx, pixTransaction)
 	if err != nil {
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+    		err = erro.ErrTimeout
+		} 
 		switch err {
 		case erro.ErrNotFound:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		case erro.ErrTimeout:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)
 		default:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
 		}
@@ -176,9 +187,14 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
 
 	res, err := h.workerService.GetPixTransaction(ctx, pixTransaction)
 	if err != nil {
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+    		err = erro.ErrTimeout
+		} 
 		switch err {
 		case erro.ErrNotFound:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		case erro.ErrTimeout:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)
 		default:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
 		}
@@ -207,9 +223,14 @@ func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Reque
 
 	res, err := h.workerService.StatPixTransaction(ctx, pixStatusAccount)
 	if err != nil {
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+    		err = erro.ErrTimeout
+		} 
 		switch err {
 		case erro.ErrNotFound:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+		case erro.ErrTimeout:
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)
 		default:
 			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
 		}
