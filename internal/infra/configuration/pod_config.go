@@ -81,10 +81,10 @@ func GetInfoPod() (	model.InfoPod, model.Server) {
 		server.Port = intVar
 	}
 	
-	server.ReadTimeout = 10
-	server.WriteTimeout = 10
+	server.ReadTimeout = 60
+	server.WriteTimeout = 60
 	server.IdleTimeout = 60
-	server.CtxTimeout = 10
+	server.CtxTimeout = 5
 
 	if os.Getenv("CTX_TIMEOUT") !=  "" {
 		intVar, _ := strconv.Atoi(os.Getenv("CTX_TIMEOUT"))
