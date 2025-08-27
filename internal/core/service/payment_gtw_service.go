@@ -140,7 +140,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	httpClient := go_core_api.HttpClient {
 		Url: fmt.Sprintf("%s/%s/%s",s.apiService[3].Url,"card",payment.CardNumber),
 		Method: s.apiService[3].Method,
-		Timeout: 15,
+		Timeout: s.apiService[3].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -205,7 +205,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	httpClient = go_core_api.HttpClient {
 		Url: fmt.Sprintf("%v%v",s.apiService[1].Url,"/checkLimitTransaction"),
 		Method: s.apiService[1].Method,
-		Timeout: 15,
+		Timeout: s.apiService[1].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -259,7 +259,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	httpClient = go_core_api.HttpClient {
 		Url: 	s.apiService[2].Url + "/movimentTransaction",
 		Method: s.apiService[2].Method,
-		Timeout: 15,
+		Timeout: s.apiService[2].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -290,7 +290,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	httpClient = go_core_api.HttpClient {
 		Url: fmt.Sprintf("%s/%s",s.apiService[4].Url,"atc"),
 		Method: s.apiService[4].Method,
-		Timeout: 15,
+		Timeout: s.apiService[4].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -375,7 +375,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	httpClient := go_core_api.HttpClient {
 		Url: 	s.apiService[0].Url + "/get/" + pixTransaction.AccountFrom.AccountID,
 		Method: s.apiService[0].Method,
-		Timeout: 15,
+		Timeout: s.apiService[0].HttpTimeout,
 		Headers: &headers,
 	}
 
@@ -447,7 +447,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	httpClient = go_core_api.HttpClient {
 		Url: fmt.Sprintf("%v%v",s.apiService[1].Url,"/checkLimitTransaction"),
 		Method: s.apiService[1].Method,
-		Timeout: 15,
+		Timeout: s.apiService[1].HttpTimeout,
 		Headers: &headers,
 	}
 
