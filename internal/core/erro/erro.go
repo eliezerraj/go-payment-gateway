@@ -6,6 +6,7 @@ import (
 
 var (
 	ErrCardTypeInvalid	= errors.New("card type invalid")
+	ErrBadRequest 		= errors.New("bad request ! check parameters")
 	ErrTransactioInvalid = errors.New("transaction is in null")
 	ErrNotFound 		= errors.New("item not found")
 	ErrTypeInvalid 		= errors.New("moviment type invalid")
