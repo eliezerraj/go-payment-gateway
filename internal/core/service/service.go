@@ -25,16 +25,18 @@ import(
 	"go.opentelemetry.io/otel/propagation"
 )
 
-var tracerProvider go_core_observ.TracerProvider
-var childLogger = log.With().Str("component","go-payment-gateway").Str("package","internal.core.service").Logger()
-var apiService go_core_api.ApiService
+var (
+	tracerProvider go_core_observ.TracerProvider
+	childLogger = log.With().Str("component","go-payment-gateway").Str("package","internal.core.service").Logger()
+	apiService go_core_api.ApiService
+)
 
 type WorkerService struct {
 	goCoreRestApiService	go_core_api.ApiService
 	apiService				[]model.ApiService
 	workerRepository 		*database.WorkerRepository
 	workerEvent				*event.WorkerEvent
-	mutex    				sync.Mutex
+	mutex    				sync.Mutex // mutex to avoid commit over a transaction on air for kafka message
 }
 
 // About create a new worker service
