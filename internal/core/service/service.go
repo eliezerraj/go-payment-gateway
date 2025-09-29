@@ -595,7 +595,7 @@ func (s *WorkerService) StatPixTransaction(ctx context.Context, pixStatusAccount
 func (s *WorkerService) GetPixTransaction(ctx context.Context, pixTransaction model.PixTransaction) (*model.PixTransaction, error){
 	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
-	// create a payment
+	// get pix 
 	res_pixTransaction, err := s.workerRepository.GetPixTransaction(ctx, pixTransaction)
 	if err != nil {
 		return nil, err
@@ -680,4 +680,17 @@ func(s *WorkerService) ProducerEventKafka2(ctx context.Context, topic string, ke
 	childLogger.Info().Interface("trace-request-id", trace_id ).Msg("KAFKA COMMIT !!!")	
 
 	return
+}
+
+//About Payment 
+func (s * WorkerService) GetPayment(ctx context.Context, payment model.Payment) (*[]model.Payment, error){
+	childLogger.Info().Str("func","GetPayment").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	// get pix 
+	res_list_payment, err := s.workerRepository.GetPayment(ctx, payment)
+	if err != nil {
+		return nil, err
+	}
+
+	return res_list_payment, nil
 }

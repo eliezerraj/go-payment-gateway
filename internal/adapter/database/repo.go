@@ -187,6 +187,70 @@ func (w *WorkerRepository) UpdatePayment(ctx context.Context, tx pgx.Tx, payment
 	}
 	return row.RowsAffected(), nil
 }
+
+// About get payments
+func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment) (*[]model.Payment, error){
+	childLogger.Info().Str("func","GetPayment").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	
+	// Trace
+	span := tracerProvider.Span(ctx, "database.GetPayment")
+	defer span.End()
+
+	// Get connection
+	conn, err := w.DatabasePGServer.Acquire(ctx)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer w.DatabasePGServer.Release(conn)
+
+	// prepare
+	res_payment := model.Payment{}
+	res_payment_list := []model.Payment{}
+
+	// query and execute
+	query :=  `select	p.card_number,
+						p.card_type,
+						p.terminal, 
+						p.card_model,
+						p.currency,
+						p.payment_at, 
+						p.amount,
+						p.mcc,
+						p.status
+				from 	payment p
+				where p.card_number = $1
+				and payment_at <= $2`
+
+	rows, err := conn.Query(ctx, query, payment.CardNumber, payment.PaymentAt)
+	if err != nil {
+		return nil, errors.New(err.Error())
+	}
+	defer rows.Close()
+    if err := rows.Err(); err != nil {
+		childLogger.Error().Err(err).Msg("fatal error closing rows")
+        return nil, errors.New(err.Error())
+    }	
+
+	for rows.Next() {
+		err := rows.Scan( 	&res_payment.CardNumber, 
+							&res_payment.CardType, 
+							&res_payment.Terminal, 
+							&res_payment.CardModel, 
+							&res_payment.Currency,
+							&res_payment.PaymentAt,
+							&res_payment.Amount,
+							&res_payment.Mcc,
+							&res_payment.Status,
+		)
+		if err != nil {
+			return nil, errors.New(err.Error())
+        }
+		res_payment_list = append(res_payment_list, res_payment)
+	}
+	
+	return &res_payment_list, nil
+}
+
 //--------------------
 
 // About add pix transaction

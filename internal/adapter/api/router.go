@@ -226,3 +226,40 @@ func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Reque
 	
 	return core_json.WriteJSON(rw, http.StatusOK, res)
 }
+
+// About get payment
+func (h *HttpRouters) GetPayment(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Info().Str("func","GetPayment").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+
+	// Set timeout for the request
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	// Create a span
+	span := tracerProvider.Span(ctx, "adapter.api.GetPayment")
+	defer span.End()
+	
+	// Get a trace id from context
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
+
+	//parameters
+	params := req.URL.Query()
+	varCard := params.Get("card")
+	varDate := params.Get("after")
+
+	convertDate, err := core_tools.ConvertToDate(varDate)
+	if err != nil {
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+	}
+	payment := model.Payment{ CardNumber: varCard,
+							  PaymentAt: *convertDate,
+							}
+
+	// Call service to do service
+	res, err := h.workerService.GetPayment(ctx, payment)
+	if err != nil {
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return core_json.WriteJSON(rw, http.StatusOK, res)
+}
