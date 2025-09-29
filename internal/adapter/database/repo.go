@@ -220,7 +220,7 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
 						p.status
 				from 	payment p
 				where p.card_number = $1
-				and payment_at <= $2`
+				and payment_at >= $2`
 
 	rows, err := conn.Query(ctx, query, payment.CardNumber, payment.PaymentAt)
 	if err != nil {
