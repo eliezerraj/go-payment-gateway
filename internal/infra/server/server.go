@@ -24,16 +24,18 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
-var childLogger = log.With().Str("component","go-payment-gateway").Str("package","internal.infra.server").Logger()
-
-var core_middleware middleware.ToolsMiddleware
-var tracerProvider go_core_observ.TracerProvider
-var infoTrace go_core_observ.InfoTrace
+var (
+	childLogger = log.With().Str("component","go-payment-gateway").Str("package","internal.infra.server").Logger()
+	core_middleware middleware.ToolsMiddleware
+	tracerProvider go_core_observ.TracerProvider
+	infoTrace go_core_observ.InfoTrace
+)
 
 type HttpServer struct {
 	httpServer	*model.Server
 }
 
+// About create new http server
 func NewHttpAppServer(httpServer *model.Server) HttpServer {
 	childLogger.Info().Str("func","NewHttpAppServer").Send()
 	return HttpServer{httpServer: httpServer }
@@ -115,6 +117,10 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 	statPixTransaction := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
 	statPixTransaction.HandleFunc("/statPixTransaction/{id}", core_middleware.MiddleWareErrorHandler(httpRouters.StatPixTransaction))		
 	statPixTransaction.Use(otelmux.Middleware("go-payment-gateway"))
+
+	getPayment := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	getPayment.HandleFunc("/payment", core_middleware.MiddleWareErrorHandler(httpRouters.GetPayment))		
+	getPayment.Use(otelmux.Middleware("go-payment-gateway"))	
 
 	srv := http.Server{
 		Addr:         ":" +  strconv.Itoa(h.httpServer.Port),      	

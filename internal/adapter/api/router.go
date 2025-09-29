@@ -23,12 +23,13 @@ import (
 	go_core_tools "github.com/eliezerraj/go-core/tools"
 )
 
-var childLogger = log.With().Str("component", "go-payment-gateway").Str("package", "internal.adapter.api").Logger()
-
-var core_json 		coreJson.CoreJson
-var core_apiError 	coreJson.APIError
-var core_tools 		go_core_tools.ToolsCore
-var tracerProvider 	go_core_observ.TracerProvider
+var (
+	childLogger = log.With().Str("component", "go-payment-gateway").Str("package", "internal.adapter.api").Logger()
+	core_json 		coreJson.CoreJson
+	core_apiError 	coreJson.APIError
+	core_tools 		go_core_tools.ToolsCore
+	tracerProvider 	go_core_observ.TracerProvider
+)
 
 type HttpRouters struct {
 	workerService 	*service.WorkerService
@@ -106,12 +107,15 @@ func (h *HttpRouters) ErrorHandler(trace_id string, err error) *coreJson.APIErro
 func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","AddPayment").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 
+	// Set timeout for the request
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()
 
+	// Create a span
 	span := tracerProvider.Span(ctx, "adapter.api.AddPayment")
 	defer span.End()
 	
+	// Get a trace id from context
 	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	payment := model.Payment{}
@@ -121,6 +125,7 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
     }
 	defer req.Body.Close()
 
+	// Call service to do service
 	res, err := h.workerService.AddPayment(ctx, payment)
 	if err != nil {
 		return h.ErrorHandler(trace_id, err)
@@ -133,12 +138,15 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
 func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","PixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 
+	// Set timeout for the request
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()
 
+	// Create a span
 	span := tracerProvider.Span(ctx, "adapter.api.PixTransaction")
 	defer span.End()
 	
+	// Get a trace id from context
 	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	pixTransaction := model.PixTransaction{}
@@ -148,6 +156,7 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
     }
 	defer req.Body.Close()
 
+	// Call service to do service
 	res, err := h.workerService.PixTransaction(ctx, pixTransaction)
 	if err != nil {
 		return h.ErrorHandler(trace_id, err)
@@ -160,12 +169,15 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
 func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","GetPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 
+	// Set timeout for the request
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()
 
+	// Create a span
 	span := tracerProvider.Span(ctx, "adapter.api.GetPixTransaction")
 	defer span.End()
 	
+	// Get a trace id from context
 	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	vars := mux.Vars(req)
@@ -178,6 +190,7 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
 
 	pixTransaction := model.PixTransaction{ID: varIDint}
 
+	// Call service to do service
 	res, err := h.workerService.GetPixTransaction(ctx, pixTransaction)
 	if err != nil {
 		return h.ErrorHandler(trace_id, err)
@@ -190,20 +203,60 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
 func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","StatPixTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 
+	// Set timeout for the request
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()
 
+	// Create a span
 	span := tracerProvider.Span(ctx, "adapter.api.StatPixTransaction")
 	defer span.End()
 	
+	// Get a trace id from context
 	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	vars := mux.Vars(req)
 	varID := vars["id"]
-
 	pixStatusAccount := model.PixStatusAccount{AccountFrom: varID}
 
+	// Call service to do service
 	res, err := h.workerService.StatPixTransaction(ctx, pixStatusAccount)
+	if err != nil {
+		return h.ErrorHandler(trace_id, err)
+	}
+	
+	return core_json.WriteJSON(rw, http.StatusOK, res)
+}
+
+// About get payment
+func (h *HttpRouters) GetPayment(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Info().Str("func","GetPayment").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+
+	// Set timeout for the request
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	// Create a span
+	span := tracerProvider.Span(ctx, "adapter.api.GetPayment")
+	defer span.End()
+	
+	// Get a trace id from context
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
+
+	//parameters
+	params := req.URL.Query()
+	varCard := params.Get("card")
+	varDate := params.Get("after")
+
+	convertDate, err := core_tools.ConvertToDate(varDate)
+	if err != nil {
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
+	}
+	payment := model.Payment{ CardNumber: varCard,
+							  PaymentAt: *convertDate,
+							}
+
+	// Call service to do service
+	res, err := h.workerService.GetPayment(ctx, payment)
 	if err != nil {
 		return h.ErrorHandler(trace_id, err)
 	}
