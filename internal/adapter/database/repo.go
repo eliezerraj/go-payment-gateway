@@ -208,7 +208,8 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
 	res_payment_list := []model.Payment{}
 
 	// query and execute
-	query :=  `select	p.card_number,
+	query :=  `select	p.id,
+						p.card_number,
 						p.card_type,
 						p.terminal, 
 						p.card_model,
@@ -232,7 +233,8 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
     }	
 
 	for rows.Next() {
-		err := rows.Scan( 	&res_payment.CardNumber, 
+		err := rows.Scan( 	&res_payment.ID,
+							&res_payment.CardNumber, 
 							&res_payment.CardType, 
 							&res_payment.Terminal, 
 							&res_payment.CardModel, 
