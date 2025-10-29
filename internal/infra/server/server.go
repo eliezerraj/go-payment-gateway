@@ -20,7 +20,8 @@ import (
 	"github.com/eliezerraj/go-core/middleware"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/contrib/propagators/aws/xray"
+	//"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
@@ -59,7 +60,8 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 											&infoTrace)
 
 	if tp != nil {
-		otel.SetTextMapPropagator(xray.Propagator{})
+		//otel.SetTextMapPropagator(xray.Propagator{})
+		otel.SetTextMapPropagator(propagation.TraceContext{}) //  propagation.TraceContext{} xray.Propagator{}
 		otel.SetTracerProvider(tp)
 	}
 	defer func() { 
