@@ -1,7 +1,7 @@
 #docker build -t go-payment-gateway .
 #docker run -dit --name go-payment-gateway -p 6004:6004 go-payment-gateway sleep infinity
 
-FROM golang:1.23.3 As builder
+FROM golang:1.24 As builder
 
 RUN apt-get update && apt-get install bash && apt-get install -y --no-install-recommends ca-certificates
 
