@@ -112,7 +112,7 @@ func (h *HttpRouters) AddPayment(rw http.ResponseWriter, req *http.Request) erro
     defer cancel()
 
 	// Create a span
-	span := tracerProvider.Span(ctx, "adapter.api.AddPayment")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.AddPayment")
 	defer span.End()
 	
 	// Get a trace id from context
@@ -143,7 +143,7 @@ func (h *HttpRouters) PixTransaction(rw http.ResponseWriter, req *http.Request) 
     defer cancel()
 
 	// Create a span
-	span := tracerProvider.Span(ctx, "adapter.api.PixTransaction")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.PixTransaction")
 	defer span.End()
 	
 	// Get a trace id from context
@@ -174,7 +174,7 @@ func (h *HttpRouters) GetPixTransaction(rw http.ResponseWriter, req *http.Reques
     defer cancel()
 
 	// Create a span
-	span := tracerProvider.Span(ctx, "adapter.api.GetPixTransaction")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.GetPixTransaction")
 	defer span.End()
 	
 	// Get a trace id from context
@@ -208,7 +208,7 @@ func (h *HttpRouters) StatPixTransaction(rw http.ResponseWriter, req *http.Reque
     defer cancel()
 
 	// Create a span
-	span := tracerProvider.Span(ctx, "adapter.api.StatPixTransaction")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.StatPixTransaction")
 	defer span.End()
 	
 	// Get a trace id from context
@@ -236,7 +236,7 @@ func (h *HttpRouters) GetPayment(rw http.ResponseWriter, req *http.Request) erro
     defer cancel()
 
 	// Create a span
-	span := tracerProvider.Span(ctx, "adapter.api.GetPayment")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.GetPayment")
 	defer span.End()
 	
 	// Get a trace id from context

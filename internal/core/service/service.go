@@ -92,7 +92,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	childLogger.Info().Str("func","AddPayment").Interface("trace-request-id", ctx.Value("trace-request-id")).Interface("payment", payment).Send()
 
 	// Trace
-	span := tracerProvider.Span(ctx, "service.AddPayment")
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddPayment")
 	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 
 	// Get the database connection
@@ -129,8 +129,9 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// ------------------------  STEP-1 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 01 (PAYMENT) <===")
-	
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-1 (PAYMENT) <===")
+	stepctx1, stepSpan1 := tracerProvider.SpanCtx(ctx, "service.AddPayment:STEP-1-(payment)")
+
 	// prepare headers
 	headers := map[string]string{
 		"Content-Type":  "application/json;charset=UTF-8",
@@ -147,7 +148,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// get card data
-	res_payload, statusCode, err := apiService.CallRestApiV1(ctx,
+	res_payload, statusCode, err := apiService.CallRestApiV1(stepctx1,
 															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
@@ -172,7 +173,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	payment.Status = "AUTHORIZATION:PENDING"
 
 	// create a payment
-	res_payment, err := s.workerRepository.AddPayment(ctx, tx, &payment)
+	res_payment, err := s.workerRepository.AddPayment(stepctx1, tx, &payment)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +186,12 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	stepProcessStatus = "AUTHORIZATION:STATUS:PENDING"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 	
+	stepSpan1.End()
 	// ------------------------  STEP-2 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02 (LIMIT) <===")
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-2 (LIMIT) <===")
+	stepctx2, stepSpan2 := tracerProvider.SpanCtx(ctx, "service.AddPayment:STEP-2-(limit)")
+	
 	// Check the limits
-
 	limit := model.Limit{ 	TransactionId: *payment.TransactionId,
 						  	Key: 	payment.CardNumber,
 							TypeLimit: "CREDIT",
@@ -212,7 +215,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// Call go-limit
-	res_limit, statusCode, err := apiService.CallRestApiV1(	ctx,
+	res_limit, statusCode, err := apiService.CallRestApiV1(	stepctx2,
 															s.goCoreRestApiService.Client,	
 															httpClient, 
 															limit)
@@ -236,13 +239,17 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	// add step 02
 	stepProcessStatus = fmt.Sprintf("LIMIT:%v", list_status)
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	
+	stepSpan2.End()
 
 	// ------------------------  STEP-3 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 03 (FRAUD) <===")
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-3 (FRAUD) <===")
 	// Check Fraud
 
 	// ------------------------  STEP-4 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 04 (LEDGER) <===")
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-4 (LEDGER) <===")
+	stepctx4, stepSpan4 := tracerProvider.SpanCtx(ctx, "service.AddPayment:STEP-4-(ledger)")
+
 	// Access Account (ledger)
 	moviment := model.Moviment{	AccountID: card_parsed.AccountID,
 								AccountFrom: model.Account{AccountID: card_parsed.AccountID},
@@ -266,7 +273,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// Call go-ledger
-	_, statusCode, err = apiService.CallRestApiV1(ctx,
+	_, statusCode, err = apiService.CallRestApiV1(stepctx4,
 												s.goCoreRestApiService.Client,
 												httpClient, 
 												moviment)
@@ -277,9 +284,11 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	// add step 04
 	stepProcessStatus = "LEDGER:WITHDRAW:OK"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan4.End()
 
 	// ------------------------  STEP-5 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 05 (CARDS:ATC) <===")
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-5 (CARDS:ATC) <===")
+	stepctx5, stepSpan5 := tracerProvider.SpanCtx(ctx, "service.AddPayment:STEP-5-(cards-atc)")
 
 	// prepare headers
 	headers = map[string]string{
@@ -297,7 +306,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	// get card data
-	res_payload, statusCode, err = apiService.CallRestApiV1(ctx,
+	res_payload, statusCode, err = apiService.CallRestApiV1(stepctx5,
 															s.goCoreRestApiService.Client,
 															httpClient, 
 															card_parsed)
@@ -307,13 +316,15 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 
 	stepProcessStatus = "CARD-ATC:OK"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
-	
+	stepSpan5.End()
+
 	// ------------------------  STEP-6 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - (UPDATE PAYMENT) <===")
-	
+	childLogger.Info().Str("func","AddPayment").Msg("===> STEP-6 (UPDATE PAYMENT) <===")
+	stepctx6, stepSpan6 := tracerProvider.SpanCtx(ctx, "service.AddPayment:STEP-6-(update-payment-status)")
+
 	// update status payment
 	payment.Status = "AUTHORIZATION:OK"
-	res_update, err := s.workerRepository.UpdatePayment(ctx, tx, payment)
+	res_update, err := s.workerRepository.UpdatePayment(stepctx6, tx, payment)
 	if err != nil {
 		return nil, err
 	}
@@ -329,6 +340,7 @@ func (s * WorkerService) AddPayment(ctx context.Context, payment model.Payment) 
 	
 	// add the step proccess
 	payment.StepProcess = &list_stepProcess
+	stepSpan6.End()
 
 	return &payment, nil
 }
@@ -338,7 +350,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	childLogger.Info().Str("func","PixTransaction").Interface("trace-request-id", ctx.Value("trace-request-id")).Interface("pixTransaction", pixTransaction).Send()
 
 	// Trace
-	ctx, span := tracerProvider.SpanCtx(ctx, "service.AddPayment")
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.PixTransaction")
 	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
 
 	// Get the database connection
@@ -365,8 +377,9 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	var stepProcessStatus string
 
 	// ------------------------  STEP-1 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 01 (ACCOUNT FROM) <===")
-	
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-1 (ACCOUNT FROM) <===")
+	stepctx1, stepSpan1 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-1-(account-from)")
+
 	// prepare headers
 	headers := map[string]string{
 		"Content-Type":  	"application/json;charset=UTF-8",
@@ -381,7 +394,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		Headers: &headers,
 	}
 
-	res_payload, statusCode, err := apiService.CallRestApiV1(ctx,
+	res_payload, statusCode, err := apiService.CallRestApiV1(stepctx1,
 															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
@@ -399,8 +412,10 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	stepProcessStatus = "ACCOUNT-FROM:OK"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
 
+	stepSpan1.End()
 	// ------------------------  STEP-2 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 02 (ACCOUNT TO) <===")
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-2 (ACCOUNT TO) <===")
+	stepctx2, stepSpan2 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-2-(account-to)")
 
 	httpClient = go_core_api.HttpClient {
 		Url: 	s.apiService[0].Url + "/get/" + pixTransaction.AccountTo.AccountID,
@@ -409,7 +424,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 		Headers: &headers,
 	}
 
-	res_payload, statusCode, err = apiService.CallRestApiV1(ctx,
+	res_payload, statusCode, err = apiService.CallRestApiV1(stepctx2,
 															s.goCoreRestApiService.Client,
 															httpClient, 
 															nil)
@@ -426,11 +441,12 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 
 	stepProcessStatus = "ACCOUNT-TO:OK"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
-
-	// ------------------------  STEP-2.1 ----------------------------------//
-	childLogger.Info().Str("func","AddPayment").Msg("===> STEP - 02.1 (LIMIT) <===")
+	stepSpan2.End()
+	// ------------------------  STEP-3 ----------------------------------//
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-3 (LIMIT) <===")
+	stepctx3, stepSpan3 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-3-(limit")
+	
 	// Check the limits
-
 	limit := model.Limit{ 	TransactionId: pixTransaction.TransactionId,
 						  	Key: account_from_parsed.AccountID + ":" + account_to_parsed.AccountID,
 							TypeLimit: "TRANSFER",
@@ -454,7 +470,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	}
 
 	// Call go-limit
-	res_limit, statusCode, err := apiService.CallRestApiV1(	ctx,
+	res_limit, statusCode, err := apiService.CallRestApiV1(	stepctx3,
 															s.goCoreRestApiService.Client,	
 															httpClient, 
 															limit)
@@ -477,9 +493,11 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 
 	stepProcessStatus = fmt.Sprintf("LIMIT:%v", list_status)
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan3.End()
 
-	// ------------------------  STEP-3 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 03 (PIX-TRANSACTION) <===")
+	// ------------------------  STEP-4 ----------------------------------//
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-4 (PIX-TRANSACTION) <===")
+	stepctx4, stepSpan4 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-4-(pix-transaction)")
 
 	pixTransaction.AccountFrom = account_from_parsed
 	pixTransaction.AccountTo = account_to_parsed
@@ -488,7 +506,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	pixTransaction.TransactionAt = time.Now()
 	
 	// add pix payment
-	res_pixTransaction, err := s.workerRepository.AddPixTransaction(ctx, tx, pixTransaction)
+	res_pixTransaction, err := s.workerRepository.AddPixTransaction(stepctx4, tx, pixTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -498,9 +516,11 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 
 	stepProcessStatus = "PIX-TRANSACTION:STATUS:PENDING"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan4.End()
 
-	// ------------------------  STEP-4 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 04 (SEND TO LEDGE VIA MESSAGE - KAFKA) <===")
+	// ------------------------  STEP-5 ----------------------------------//
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-5 (SEND TO LEDGE VIA MESSAGE - KAFKA) <===")
+	stepctx5, stepSpan5 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-5-(send-ledger-kafka)")
 
 	stepProcessStatus = "LEDGER:WIRE-TRANSFER:IN-QUEUE"
 	if s.workerEvent != nil {
@@ -512,7 +532,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 			return nil, err
 		}
 
-		err = s.ProducerEventKafka2(ctx, s.workerEvent.Topics[0], key, payload_bytes)
+		err = s.ProducerEventKafka2(stepctx5, s.workerEvent.Topics[0], key, payload_bytes)
 		if err != nil {
 			return nil, err
 		}
@@ -521,16 +541,18 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	}
 
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan5.End()
 
 	// ------------------------  STEP-5 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 05 (UPDATE PIX-TRANSACTION <===")
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-6 (UPDATE PIX-TRANSACTION <===")
+	stepctx6, stepSpan6 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-5-(update-pix-transaction)")
 
 	// add the step proccess
 	pixTransaction.StepProcess = &list_stepProcess
 
 	// update status payment
 	pixTransaction.Status = "IN-QUEUE:OK"
-	res_update, err := s.workerRepository.UpdatePixTransaction(ctx, tx, pixTransaction)
+	res_update, err := s.workerRepository.UpdatePixTransaction(stepctx6, tx, pixTransaction)
 	if err != nil {
 		return nil, err
 	}
@@ -541,9 +563,11 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 
 	stepProcessStatus = "PIX-TRANSACTION:STATUS:IN-QUEUE"
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan6.End()
 
-	// ------------------------  STEP-6 ----------------------------------//
-	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP - 06 (WEBHOOK) <===")
+	// ------------------------  STEP-7 ----------------------------------//
+	childLogger.Info().Str("func","PixTransaction").Msg("===> STEP-7 (WEBHOOK) <===")
+	stepctx7, stepSpan7 := tracerProvider.SpanCtx(ctx, "service.PixTransaction:STEP-7-(webhook)")
 
 	stepProcessStatus = "WEBHOOK:PAYMENT:IN-QUEUE"
 	if s.workerEvent != nil {
@@ -563,7 +587,7 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 			return nil, err
 		}
 
-		err = s.ProducerEventKafka2(ctx, s.workerEvent.Topics[1], key, payload_bytes)
+		err = s.ProducerEventKafka2(stepctx7, s.workerEvent.Topics[1], key, payload_bytes)
 		if err != nil {
 			return nil, err
 		}
@@ -572,9 +596,10 @@ func (s * WorkerService) PixTransaction(ctx context.Context, pixTransaction mode
 	}
 
 	list_stepProcess = appentStepProcess(stepProcessStatus, list_stepProcess)
+	stepSpan7.End()
 
 	childLogger.Info().Str("func","AddPayment: ===> FINAL").Interface("pixTransaction", pixTransaction).Send()
-	
+
 	return &pixTransaction, nil
 }
 
@@ -609,7 +634,7 @@ func(s *WorkerService) ProducerEventKafka2(ctx context.Context, topic string, ke
 	childLogger.Info().Str("func","ProducerEventKafka").Interface("trace-request-id", ctx.Value("trace-request-id")).Send()
 
 	// trace
-	span := tracerProvider.Span(ctx, "service.ProducerEventKafka")
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.ProducerEventKafka")
 	defer span.End()
 
 	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
@@ -693,4 +718,130 @@ func (s * WorkerService) GetPayment(ctx context.Context, payment model.Payment) 
 	}
 
 	return res_list_payment, nil
+}
+
+// About check health service
+func (s * WorkerService) HealthCheck(ctx context.Context) error{
+	childLogger.Info().Str("func","HealthCheck").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+
+	// Trace
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.HealthCheck")
+	defer span.End()
+	trace_id := fmt.Sprintf("%v",ctx.Value("trace-request-id"))
+
+	// Check database health
+
+	err := s.workerRepository.DatabasePGServer.Ping()
+	if err != nil {
+		log.Error().Err(err).Msg("*** Database health check FAILED ***")
+		return erro.ErrHealthCheck
+	}
+	childLogger.Info().Str("func","HealthCheck").Msg("*** Database health check SUCCESSFULL ***")
+
+	// Set headers
+	headers := map[string]string{
+		"Content-Type":  "application/json;charset=UTF-8",
+		"X-Request-Id": trace_id,
+		"Host": s.apiService[0].HostName,
+	}
+
+	// Set client http	
+	httpClient := go_core_api.HttpClient {
+		Url: 	s.apiService[0].Url + "/health",
+		Method: s.apiService[0].Method,
+		Timeout: s.apiService[0].HttpTimeout,
+		Headers: &headers,
+	}
+
+	// get account_if from id (PK)
+	_, _, err = apiService.CallRestApiV1(	ctx,
+											s.goCoreRestApiService.Client,
+											httpClient, 
+											nil)
+	if err != nil {
+		log.Error().Err(err).Msg("*** Service ACCOUNT HEALTH FAILED ***")
+		return erro.ErrHealthCheck
+	}
+	childLogger.Info().Str("func","HealthCheck").Msg("*** Service ACCOUNT HEALTH SUCCESSFULL ***")
+
+	// Set headers
+	headers = map[string]string{
+		"Content-Type":  "application/json;charset=UTF-8",
+		"X-Request-Id": trace_id,
+		"Host": s.apiService[1].HostName,
+	}
+
+	// Set client http	
+	httpClient = go_core_api.HttpClient {
+		Url: 	s.apiService[1].Url + "/health",
+		Method: s.apiService[1].Method,
+		Timeout: s.apiService[1].HttpTimeout,
+		Headers: &headers,
+	}
+
+	// get account_if from id (PK)
+	_, _, err = apiService.CallRestApiV1(	ctx,
+											s.goCoreRestApiService.Client,
+											httpClient, 
+											nil)
+	if err != nil {
+		log.Error().Err(err).Msg("*** Service LIMIT HEALTH FAILED ***")
+		return erro.ErrHealthCheck
+	}
+	childLogger.Info().Str("func","HealthCheck").Msg("*** Service LIMIT HEALTH SUCCESSFULL ***")
+
+	
+	// Set headers
+	headers = map[string]string{
+		"Content-Type":  "application/json;charset=UTF-8",
+		"X-Request-Id": trace_id,
+		"Host": s.apiService[2].HostName,
+	}
+
+	// Set client http	
+	httpClient = go_core_api.HttpClient {
+		Url: 	s.apiService[2].Url + "/health",
+		Method: s.apiService[2].Method,
+		Timeout: s.apiService[2].HttpTimeout,
+		Headers: &headers,
+	}
+
+	// get account_if from id (PK)
+	_, _, err = apiService.CallRestApiV1(	ctx,
+											s.goCoreRestApiService.Client,
+											httpClient, 
+											nil)
+	if err != nil {
+		log.Error().Err(err).Msg("*** Service LEDGER HEALTH FAILED ***")
+		return erro.ErrHealthCheck
+	}
+	childLogger.Info().Str("func","HealthCheck").Msg("*** Service LEDGER HEALTH SUCCESSFULL ***")
+	
+	// Set headers
+	headers = map[string]string{
+		"Content-Type":  "application/json;charset=UTF-8",
+		"X-Request-Id": trace_id,
+		"Host": s.apiService[2].HostName,
+	}
+
+	// Set client http	
+	httpClient = go_core_api.HttpClient {
+		Url: 	s.apiService[2].Url + "/health",
+		Method: s.apiService[2].Method,
+		Timeout: s.apiService[2].HttpTimeout,
+		Headers: &headers,
+	}
+
+	// get account_if from id (PK)
+	_, _, err = apiService.CallRestApiV1(	ctx,
+											s.goCoreRestApiService.Client,
+											httpClient, 
+											nil)
+	if err != nil {
+		log.Error().Err(err).Msg("*** Service CARD HEALTH FAILED ***")
+		return erro.ErrHealthCheck
+	}
+	childLogger.Info().Str("func","HealthCheck").Msg("*** Service CARD HEALTH SUCCESSFULL ***")
+
+	return nil
 }
