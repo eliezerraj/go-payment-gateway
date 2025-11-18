@@ -103,6 +103,7 @@ func (w *WorkerRepository) AddPayment(ctx context.Context, tx pgx.Tx, payment *m
 
 	var id int
 	if err := row.Scan(&id); err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 
@@ -123,6 +124,7 @@ func (w *WorkerRepository) GetTerminal(ctx context.Context, terminal model.Termi
 	// Get connection
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -143,6 +145,7 @@ func (w *WorkerRepository) GetTerminal(ctx context.Context, terminal model.Termi
 
 	rows, err := conn.Query(ctx, query, terminal.Name)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -157,6 +160,7 @@ func (w *WorkerRepository) GetTerminal(ctx context.Context, terminal model.Termi
 							&res_terminal.UpdatedAt,
 		)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_terminal, nil
@@ -183,6 +187,7 @@ func (w *WorkerRepository) UpdatePayment(ctx context.Context, tx pgx.Tx, payment
 									payment.Status,
 									time.Now())
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return 0, errors.New(err.Error())
 	}
 	return row.RowsAffected(), nil
@@ -199,6 +204,7 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
 	// Get connection
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -224,6 +230,7 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
 
 	rows, err := conn.Query(ctx, query, payment.CardNumber, payment.PaymentAt)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -245,6 +252,7 @@ func (w *WorkerRepository) GetPayment(ctx context.Context, payment model.Payment
 							&res_payment.Status,
 		)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		res_payment_list = append(res_payment_list, res_payment)
@@ -297,6 +305,7 @@ func (w *WorkerRepository) AddPixTransaction(ctx context.Context, tx pgx.Tx, pix
 
 	var id int
 	if err := row.Scan(&id); err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 
@@ -324,6 +333,7 @@ func (w *WorkerRepository) UpdatePixTransaction(ctx context.Context, tx pgx.Tx, 
 									pixTransaction.Status,
 									time.Now())
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return 0, errors.New(err.Error())
 	}
 	return row.RowsAffected(), nil
@@ -340,6 +350,7 @@ func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAcco
 	// Get connection
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -355,6 +366,7 @@ func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAcco
 
 	rows1, err := conn.Query(ctx, query1)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows1.Close()
@@ -364,6 +376,7 @@ func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAcco
 							&res_pixStatusCount.Count, 
 		)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		res_listPixStatusCount = append(res_listPixStatusCount, res_pixStatusCount)
@@ -381,6 +394,7 @@ func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAcco
 
 	rows2, err := conn.Query(ctx, query2, pixStatusAccount.AccountFrom)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows2.Close()
@@ -392,6 +406,7 @@ func (w *WorkerRepository) StatPixTransaction(ctx context.Context, pixStatusAcco
 							&res_pixStatusAccount.Count,  
 		)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 	}	
@@ -414,6 +429,7 @@ func (w *WorkerRepository) GetPixTransaction(ctx context.Context, pixTransaction
 	// Get connection
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -440,6 +456,7 @@ func (w *WorkerRepository) GetPixTransaction(ctx context.Context, pixTransaction
 
 	rows, err := conn.Query(ctx, query, pixTransaction.ID)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -460,6 +477,7 @@ func (w *WorkerRepository) GetPixTransaction(ctx context.Context, pixTransaction
 		res_pixTransaction.AccountFrom = accountFrom
 		res_pixTransaction.AccountTo = accountTo
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_pixTransaction, nil
